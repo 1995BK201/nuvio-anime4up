@@ -4,13 +4,12 @@
  * Interface: getStreams(tmdbId, mediaType, season, episode) -> Promise<Stream[]>
  * Stream: { name, title, url, quality, headers }
  *
- * NOTE: anime4up.bond is only a gateway page. The real site rotates domains,
- * so BASE_URL is resolved at runtime (see resolveBase) with fallbacks.
- * CSS selectors are best-effort from the site's known theme; if the site changes,
- * adjust the SELECTORS block only.
+ * anime4up.bond is only a gateway page. The real site rotates domains,
+ * so the base URL is resolved at runtime (see resolveBase) with fallbacks.
+ * If the site changes, adjust the SELECTORS block only.
  */
 
-const TMDB_API_KEY = '4ec8d326bf945c606b8d7aa7e363d921'; // free key from themoviedb.org
+const TMDB_API_KEY = '4ec8d326bf945c606b8d7aa7e363d921';
 const GATEWAY = 'https://www.anime4up.bond/';
 const FALLBACK_BASES = ['https://4q.71wcx57.shop', 'https://w1.anime4up.rest'];
 
@@ -18,11 +17,11 @@ const UA =
   'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36';
 
 const SELECTORS = {
-  // search results: <div class="anime-card-container"> ... <div class="anime-card-title"><h3><a href>
+  // search results
   card: /<div class="anime-card-title">\s*<h3>\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g,
-  // episode list: <div class="episodes-card-title"><h3><a href>
+  // episode list on the anime page
   episode: /<div class="episodes-card-title">\s*<h3>\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g,
-  // server buttons on episode page
+  // server buttons on the episode page
   server: /<a[^>]+data-ep-url="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g,
   iframe: /<iframe[^>]+src="([^"]+)"/g,
 };
@@ -42,8 +41,9 @@ async function resolveBase() {
   if (cachedBase) return cachedBase;
   try {
     const { text } = await get(GATEWAY);
-    // gateway links to the live domain (first absolute link inside the nav)
-    const m = text.match(/href="(https?:\/\/[^"\/]+)\/?"[^>]*title="(?:الصفحة الرئيسية|انمي فور اب)"/);
+    const m = text.match(
+      /href="(https?:\/\/[^"\/]+)\/?"[^>]*title="(?:الصفحة الرئيسية|انمي فور اب)"/
+    );
     if (m) {
       cachedBase = m[1];
       return cachedBase;
@@ -68,8 +68,9 @@ function all(re, s) {
 }
 
 function decodeServerUrl(raw) {
-  let u = raw.trim();
-  if (/^https?:\/\//i.test(u) || u.startsWith('//')) return u.startsWith('//') ? 'https:' + u : u;
+  const u = raw.trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  if (u.startsWith('//')) return 'https:' + u;
   try {
     const d = typeof atob === 'function' ? atob(u) : Buffer.from(u, 'base64').toString('utf8');
     if (/^https?:\/\//i.test(d)) return d;
@@ -86,12 +87,12 @@ function qualityFrom(s) {
 async function extractDirect(embedUrl) {
   try {
     const { text } = await get(embedUrl, { Referer: embedUrl });
+    const clean = text.replace(/\\\//g, '/');
     const hits = [];
     const re = /(https?:\/\/[^"'\s\\]+?\.(?:m3u8|mp4)[^"'\s\\]*)/g;
     let m;
-    while ((m = re.exec(text.replace(/\\\//g, '/')))) hits.push(m[1]);
-    // packed/"file:" style
-    const f = /file\s*:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/.exec(text);
+    while ((m = re.exec(clean))) hits.push(m[1]);
+    const f = /file\s*:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/.exec(clean);
     if (f) hits.push(f[1]);
     return hits.length ? hits[0] : null;
   } catch (e) {
@@ -149,7 +150,8 @@ async function findEpisodeUrl(animeUrl, episode) {
     const hit = /(?:الحلقة|episode|ep)\s*0*(\d+)/i.exec(m[2]);
     if (hit && hit[1] === n) return m[1];
   }
-  return null;
+  // movies usually list a single entry
+  return eps.length === 1 ? eps[0][1] : null;
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
@@ -165,13 +167,11 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     }
     if (!anime) return [];
 
-    let pageUrl;
-    if (mediaType === 'movie') {
-      pageUrl = anime.url;
-    } else {
-      pageUrl = await findEpisodeUrl(anime.url, episode || 1);
-      if (!pageUrl) return [];
-    }
+    const pageUrl = await findEpisodeUrl(
+      anime.url,
+      mediaType === 'movie' ? 1 : episode || 1
+    );
+    if (!pageUrl) return [];
 
     const { text: page } = await get(pageUrl);
     const embeds = [];
