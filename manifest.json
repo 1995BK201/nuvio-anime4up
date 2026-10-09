@@ -1,15 +1,19 @@
 {
   "name": "Anime4up Repo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scrapers": [
     {
       "id": "anime4up",
       "name": "Anime4up",
       "description": "Arabic-subbed anime",
-      "version": "1.0.0",
-      "filename": "providers/anime4up.js",
+      "version": "1.0.1",
+      "author": "Alawi",
       "supportedTypes": ["movie", "tv"],
-      "enabled": true
+      "filename": "providers/anime4up.js",
+      "enabled": true,
+      "formats": ["m3u8", "mp4"],
+      "logo": "https://www.google.com/s2/favicons?domain=anime4up.bond&sz=128",
+      "contentLanguage": ["ar"]
     }
   ]
 }
