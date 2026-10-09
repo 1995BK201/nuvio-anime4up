@@ -1,0 +1,15 @@
+{
+  "name": "Anime4up Repo",
+  "version": "1.0.0",
+  "scrapers": [
+    {
+      "id": "anime4up",
+      "name": "Anime4up",
+      "description": "Arabic-subbed anime",
+      "version": "1.0.0",
+      "filename": "providers/anime4up.js",
+      "supportedTypes": ["movie", "tv"],
+      "enabled": true
+    }
+  ]
+}
